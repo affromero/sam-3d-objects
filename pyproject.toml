@@ -13,7 +13,10 @@ allow-direct-references = true
 name = "sam3d_objects"
 version = "0.0.1"
 # required for "hatch-requirements-txt" to work
-dynamic = ["dependencies", "optional-dependencies"]
+#dynamic = ["dependencies", "optional-dependencies"]
+dependencies = [
+    "seaborn>=0.13.2",
+]
 
 [tool.hatch.build]
 ignore-vcs = true
@@ -21,10 +24,14 @@ include = ["**/*.py"]
 exclude = ["conftest.py", "*_test.py"]
 packages = ["sam3d_objects"]
 
-[tool.hatch.metadata.hooks.requirements_txt]
-files = ["requirements.txt"]
+[tool.uv]
+# Disable build isolation for gsplat and kaolin to allow custom compilation
+no-build-isolation = ["gsplat", "kaolin"]
 
-[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
-p3d = ["requirements.p3d.txt"]
-inference = ["requirements.inference.txt"]
-dev = ["requirements.dev.txt"]
+#[tool.hatch.metadata.hooks.requirements_txt]
+#files = ["requirements.txt"]
+
+#[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
+#p3d = ["requirements.p3d.txt"]
+#inference = ["requirements.inference.txt"]
+#dev = ["requirements.dev.txt"]
