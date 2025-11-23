@@ -239,7 +239,7 @@ class InferencePipelinePointMap(InferencePipeline):
 
 
 
-    def compute_pointmap(self, image, pointmap=None):
+    def compute_pointmap(self, image, pointmap=None, intrinsics=None):
         loaded_image = self.image_to_float(image)
         loaded_image = torch.from_numpy(loaded_image)
         loaded_mask = loaded_image[..., -1]
@@ -260,7 +260,7 @@ class InferencePipelinePointMap(InferencePipeline):
         else:
             output = {}
             points_tensor = pointmap.to(self.device)
-            if loaded_image.shape != points_tensor.shape:
+            if loaded_image.shape[1:] != points_tensor.shape[:2]:
                 # Interpolate points_tensor to match loaded_image size
                 # loaded_image has shape [3, H, W], we need H and W
                 points_tensor = torch.nn.functional.interpolate(
@@ -268,7 +268,6 @@ class InferencePipelinePointMap(InferencePipeline):
                     size=(loaded_image.shape[1], loaded_image.shape[2]),
                     mode="nearest",
                 ).squeeze(0).permute(1, 2, 0)
-            intrinsics = None
 
         points_tensor = points_tensor.permute(2, 0, 1)
         points_tensor = self._clip_pointmap(points_tensor, loaded_mask)
@@ -285,6 +284,8 @@ class InferencePipelinePointMap(InferencePipeline):
                 points_tensor.permute(1, 2, 0), device=self.device
             )
             point_map_tensor["intrinsics"] = intrinsics_result["intrinsics"]
+        else:
+            point_map_tensor["intrinsics"] = intrinsics
 
         return point_map_tensor
 
@@ -328,12 +329,13 @@ class InferencePipelinePointMap(InferencePipeline):
         use_stage1_distillation=False,
         use_stage2_distillation=False,
         pointmap=None,
+        intrinsics=None,
         decode_formats=None,
         estimate_plane=False,
     ) -> dict:
         image = self.merge_image_and_mask(image, mask)
         with self.device: 
-            pointmap_dict = self.compute_pointmap(image, pointmap)
+            pointmap_dict = self.compute_pointmap(image, pointmap, intrinsics)
             pointmap = pointmap_dict["pointmap"]
             pts = type(self)._down_sample_img(pointmap)
             pts_colors = type(self)._down_sample_img(pointmap_dict["pts_color"])
@@ -392,6 +394,7 @@ class InferencePipelinePointMap(InferencePipeline):
                 outputs, with_mesh_postprocess, with_texture_baking, use_vertex_color
             )
             glb = outputs.get("glb", None)
+            outputs["intrinsics_normalized"] = pointmap_dict["intrinsics"]
 
             try:
                 if (
